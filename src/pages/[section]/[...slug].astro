@@ -1,0 +1,22 @@
+---
+import Article from "@components/Article.astro";
+import { articleSections, type ArticleCollection } from "@constants/sections";
+import { getSortedPosts, type ArticleEntry } from "@utils/content-utils";
+
+export async function getStaticPaths() {
+	const sections = (Object.keys(articleSections) as ArticleCollection[]).filter((name) => name !== "posts");
+	const paths = await Promise.all(sections.map(async (collection) => {
+		const entries = await getSortedPosts(collection);
+		return entries.map((entry) => ({
+			params: { section: collection, slug: entry.slug },
+			props: { entry },
+		}));
+	}));
+	return paths.flat();
+}
+
+interface Props { entry: ArticleEntry }
+const { entry } = Astro.props;
+---
+
+<Article entry={entry} />

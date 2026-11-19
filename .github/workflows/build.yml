@@ -20,6 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PUBLIC_GITHUB_USERNAME: ${{ github.repository_owner }}
+      PUBLIC_CMS_AUTH_URL: ${{ vars.CMS_AUTH_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -38,6 +39,9 @@ jobs:
 
       - name: Check Astro
         run: pnpm check
+
+      - name: Check CMS and authentication
+        run: pnpm test:cms
 
       - name: Configure GitHub Pages
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'

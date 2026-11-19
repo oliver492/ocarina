@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ocarina-cms-auth",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-19",
+  "workers_dev": true,
+  "vars": {
+    "CMS_ORIGIN": "https://oliver492.github.io",
+    "ALLOWED_GITHUB_USER": "oliver492",
+    "OAUTH_ORIGIN": "https://ocarina-cms-auth.oliver492.workers.dev"
+  }
+}

@@ -21,6 +21,7 @@ import { expressiveCodeConfig } from "./src/config.ts";
 import { pluginLanguageBadge } from "./src/plugins/expressive-code/language-badge.ts";
 import { AdmonitionComponent } from "./src/plugins/rehype-component-admonition.mjs";
 import { GithubCardComponent } from "./src/plugins/rehype-component-github-card.mjs";
+import { remarkCmsImages } from "./src/plugins/remark-cms-images.mjs";
 import { parseDirectiveNode } from "./src/plugins/remark-directive-rehype.js";
 import { remarkExcerpt } from "./src/plugins/remark-excerpt.js";
 import { remarkReadingTime } from "./src/plugins/remark-reading-time.mjs";
@@ -44,7 +45,7 @@ export default defineConfig({
 			animationClass: "transition-swup-", // see https://swup.js.org/options/#animationselector
 			// the default value `transition-` cause transition delay
 			// when the Tailwind class `transition-all` is used
-			containers: ["main", "#toc"],
+			containers: ["main", "#toc", "#sidebar"],
 			smoothScrolling: true,
 			cache: true,
 			preload: true,
@@ -110,6 +111,7 @@ export default defineConfig({
 	],
 	markdown: {
 		remarkPlugins: [
+			[remarkCmsImages, { basePath: siteUrl.pathname }],
 			remarkMath,
 			remarkReadingTime,
 			remarkExcerpt,

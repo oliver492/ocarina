@@ -1,0 +1,39 @@
+---
+import { url } from "../../utils/url-utils";
+
+const cmsOptions = {
+	local: import.meta.env.DEV,
+	basePath: import.meta.env.BASE_URL,
+	authUrl: import.meta.env.PUBLIC_CMS_AUTH_URL || "",
+};
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="robots" content="noindex, nofollow" />
+		<link rel="canonical" href={new URL(url("/admin/"), import.meta.env.SITE)} />
+		<title>ocarina 写作后台</title>
+		<link href={url("/admin/config.yml")} type="text/yaml" rel="cms-config-url" />
+		<link href={url("/admin/admin.css")} rel="stylesheet" />
+	</head>
+	<body>
+		<div id="cms-status" role="status" aria-live="polite">
+			<p class="eyebrow">ocarina / oliver</p>
+			<h1>写作后台</h1>
+			<p id="cms-message">正在加载编辑器…</p>
+			<p id="cms-help" hidden></p>
+			<button id="cms-retry" type="button" hidden>重试连接</button>
+			<a href={url("/")}>返回博客</a>
+			<noscript>请启用浏览器 JavaScript 后使用编辑器。</noscript>
+		</div>
+		<script is:inline define:vars={{ cmsOptions }}>
+			window.CMS_MANUAL_INIT = true;
+			window.OCARINA_CMS = cmsOptions;
+		</script>
+		<script is:inline src={url("/admin/vendor/decap-cms.js")}></script>
+		<script is:inline src={url("/admin/admin.js")}></script>
+	</body>
+</html>

@@ -1,0 +1,4 @@
+body { padding: 24px; color: #243247; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.8; overflow-wrap: anywhere; }
+img { max-width: 100%; height: auto; }
+pre { padding: 16px; overflow: auto; background: #f1f5f9; border-radius: 8px; }
+blockquote { margin-left: 0; padding-left: 16px; border-left: 3px solid #7bb5ce; color: #64748b; }

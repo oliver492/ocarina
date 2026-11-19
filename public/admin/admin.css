@@ -1,0 +1,9 @@
+body { margin: 0; background: #f1f5f9; color: #243247; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+#cms-status { box-sizing: border-box; max-width: 580px; margin: 14vh auto; padding: 36px; background: white; border-radius: 20px; box-shadow: 0 12px 48px #2432470d; }
+#cms-status .eyebrow { font-size: 13px; color: #64748b; letter-spacing: .08em; }
+#cms-status h1 { margin: 12px 0 24px; font-size: 28px; }
+#cms-status p { line-height: 1.8; }
+#cms-status a { color: #176b96; display: inline-block; margin-top: 20px; }
+#cms-status button { background: #176b96; color: white; border: none; border-radius: 8px; padding: 10px 18px; margin-right: 20px; cursor: pointer; }
+#cms-status [hidden] { display: none; }
+@media (max-width: 640px) { #cms-status { margin: 8vh 20px; padding: 24px; } }

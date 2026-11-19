@@ -11,6 +11,9 @@
     "astro": "astro",
     "type-check": "tsc --noEmit --isolatedDeclarations",
     "new-post": "node scripts/new-post.js",
+    "cms:local": "node scripts/start-cms.mjs",
+    "test:cms": "node --test tests/*.test.mjs workers/cms-auth/test/*.test.mjs",
+    "test:cms": "node --test tests/*.test.mjs workers/cms-auth/test/*.test.mjs",
     "format": "biome format --write ./src",
     "lint": "biome check --write ./src",
     "preinstall": "npx only-allow pnpm"
@@ -69,6 +72,7 @@
     "@types/markdown-it": "^14.1.2",
     "@types/mdast": "^4.0.4",
     "@types/sanitize-html": "^2.16.0",
+    "decap-server": "3.11.6",
     "postcss-import": "^16.1.1",
     "postcss-nesting": "^13.0.2"
   },

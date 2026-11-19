@@ -23,9 +23,9 @@ export const siteConfig: SiteConfig = {
 		src: "assets/images/demo-banner.png", // Relative to the /src directory. Relative to the /public directory if it starts with '/'
 		position: "center", // Equivalent to object-position, only supports 'top', 'center', 'bottom'. 'center' by default
 		credit: {
-			enable: true,
-			text: "Fuwari",
-			url: "https://github.com/saicaca/fuwari/blob/main/src/assets/images/demo-banner.png",
+			enable: false,
+			text: "ocarina",
+			url: "",
 		},
 	},
 	toc: {
@@ -38,6 +38,16 @@ export const siteConfig: SiteConfig = {
 export const navBarConfig: NavBarConfig = {
 	links: [
 		LinkPreset.Home,
+		{
+			name: "随记",
+			url: "/notes/",
+			external: false,
+		},
+		{
+			name: "项目",
+			url: "/projects/",
+			external: false,
+		},
 		LinkPreset.Archive,
 		LinkPreset.About,
 		...(githubUrl ? [{

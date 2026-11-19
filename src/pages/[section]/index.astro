@@ -1,0 +1,26 @@
+---
+import ArchivePanel from "@components/ArchivePanel.svelte";
+import { articleSections, type ArticleCollection } from "@constants/sections";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import { getSortedPostsList, type PostForList } from "@utils/content-utils";
+
+export async function getStaticPaths() {
+	const sections = (Object.keys(articleSections) as ArticleCollection[]).filter((name) => name !== "posts");
+	return Promise.all(sections.map(async (collection) => ({
+		params: { section: collection },
+		props: { collection, sortedPosts: await getSortedPostsList(collection) },
+	})));
+}
+
+interface Props {
+	collection: ArticleCollection;
+	sortedPosts: PostForList[];
+}
+const { collection, sortedPosts } = Astro.props;
+const title = articleSections[collection].title;
+---
+
+<MainGridLayout title={title} description={`按时间浏览${title}文章`}>
+    <h1 class="sr-only">{title}</h1>
+    <ArchivePanel sortedPosts={sortedPosts} collection={collection} client:only="svelte" />
+</MainGridLayout>
