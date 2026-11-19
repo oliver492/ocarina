@@ -65,6 +65,8 @@
 
 ## 本地校验
 
+如果登录跳转到 GitHub 404，检查跳转地址中的 `client_id` 是否为 `undefined` 或 `null`。这表示录入了占位文字，需要从 OAuth App 页面复制真实 Client ID，重新运行 `wrangler secret put GITHUB_CLIENT_ID`。更新后关闭旧的 404 窗口，从博客后台重新点击 GitHub 登录；刷新旧地址不会更新参数。Worker 会拒绝这些占位值并返回 `ready:false`。
+
 Node.js 20 或更新版本，无须安装依赖，不连接 GitHub：
 
 ```powershell

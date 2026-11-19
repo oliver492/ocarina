@@ -93,6 +93,24 @@ test("health reports readiness without exposing configuration", async () => {
   assert.deepEqual(await ready.json(), { ready: true });
 });
 
+test("literal undefined and null credentials fail closed regardless of letter case", async () => {
+  for (const field of ["GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET"]) {
+    for (const value of ["undefined", "Undefined", "UNDEFINED", "uNdEfInEd", "null", "Null", "NULL", "nUlL"]) {
+      const settings = { ...env, [field]: value };
+      const description = `${field}=${value}`;
+      const health = await handleRequest(request("/health"), settings);
+      assert.equal(health.status, 200, description);
+      assert.equal(await health.text(), '{"ready":false}', description);
+      const auth = await handleRequest(request("/auth?provider=github"), settings, () => assert.fail("invalid credentials must not reach GitHub"));
+      assert.equal(auth.status, 503, description);
+      assert.equal(auth.headers.get("Location"), null, description);
+      assertCleared(auth);
+      const output = `${await auth.text()} ${JSON.stringify([...auth.headers])}`;
+      assert.doesNotMatch(output, /undefined|null|test-client|oliver492|workers\.dev|GITHUB_CLIENT_(?:ID|SECRET)/i, description);
+    }
+  }
+});
+
 test("auth fails closed when credentials or exact HTTPS origins are missing", async () => {
   for (const settings of [{}, { ...env, GITHUB_CLIENT_SECRET: "" }, { ...env, CMS_ORIGIN: "https://oliver492.github.io/ocarina/" }, { ...env, CMS_ORIGIN: "http://oliver492.github.io" }, { ...env, OAUTH_ORIGIN: `${oauthOrigin}/` }]) {
     const result = await handleRequest(request("/auth?provider=github"), settings);

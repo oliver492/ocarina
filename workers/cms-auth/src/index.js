@@ -35,9 +35,12 @@ function getConfig(env) {
     }
     return url.origin;
   };
-  if (!/^[A-Za-z0-9._-]{1,200}$/.test(env.GITHUB_CLIENT_ID ?? "") ||
+  if (typeof env.GITHUB_CLIENT_ID !== "string" ||
+      !/^[A-Za-z0-9._-]{1,200}$/.test(env.GITHUB_CLIENT_ID) ||
+      /^(undefined|null)$/i.test(env.GITHUB_CLIENT_ID) ||
       typeof env.GITHUB_CLIENT_SECRET !== "string" ||
       !env.GITHUB_CLIENT_SECRET || env.GITHUB_CLIENT_SECRET.length > 2048 ||
+      /^(undefined|null)$/i.test(env.GITHUB_CLIENT_SECRET) ||
       /\s/.test(env.GITHUB_CLIENT_SECRET) ||
       !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(env.ALLOWED_GITHUB_USER ?? "")) {
     throw new Error("Missing configuration");
