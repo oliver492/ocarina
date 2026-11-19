@@ -37,12 +37,16 @@ function getConfig(env) {
   };
   if (typeof env.GITHUB_CLIENT_ID !== "string" ||
       !/^[A-Za-z0-9._-]{1,200}$/.test(env.GITHUB_CLIENT_ID) ||
-      /^(undefined|null)$/i.test(env.GITHUB_CLIENT_ID) ||
-      typeof env.GITHUB_CLIENT_SECRET !== "string" ||
+      /^(undefined|null)$/i.test(env.GITHUB_CLIENT_ID)) {
+    throw new Error("Invalid GITHUB_CLIENT_ID");
+  }
+  if (typeof env.GITHUB_CLIENT_SECRET !== "string" ||
       !env.GITHUB_CLIENT_SECRET || env.GITHUB_CLIENT_SECRET.length > 2048 ||
       /^(undefined|null)$/i.test(env.GITHUB_CLIENT_SECRET) ||
-      /\s/.test(env.GITHUB_CLIENT_SECRET) ||
-      !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(env.ALLOWED_GITHUB_USER ?? "")) {
+      /\s/.test(env.GITHUB_CLIENT_SECRET)) {
+    throw new Error("Invalid GITHUB_CLIENT_SECRET");
+  }
+  if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(env.ALLOWED_GITHUB_USER ?? "")) {
     throw new Error("Missing configuration");
   }
   return {
@@ -206,8 +210,15 @@ export async function handleRequest(request, env = {}, fetchImpl = fetch) {
   let config;
   try {
     config = getConfig(env);
-  } catch {
-    return response("登录代理尚未配置完成。", 503, { "Set-Cookie": clearCookie });
+  } catch (error) {
+    let message = "登录代理尚未配置完成。";
+    if (error?.message === "Invalid GITHUB_CLIENT_ID") {
+      message += "请从 GitHub OAuth App 页面复制真实 Client ID，重新录入 GITHUB_CLIENT_ID。";
+    }
+    if (error?.message === "Invalid GITHUB_CLIENT_SECRET") {
+      message += "请从 GitHub OAuth App 页面生成或复制 Client Secret，重新录入 GITHUB_CLIENT_SECRET。";
+    }
+    return response(message, 503, { "Set-Cookie": clearCookie });
   }
   if (url.origin !== config.oauthOrigin || url.protocol !== "https:") {
     return response("无效的登录代理地址。", 400, { "Set-Cookie": clearCookie });

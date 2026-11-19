@@ -67,6 +67,14 @@
 
 如果登录跳转到 GitHub 404，检查跳转地址中的 `client_id` 是否为 `undefined` 或 `null`。这表示录入了占位文字，需要从 OAuth App 页面复制真实 Client ID，重新运行 `wrangler secret put GITHUB_CLIENT_ID`。更新后关闭旧的 404 窗口，从博客后台重新点击 GitHub 登录；刷新旧地址不会更新参数。Worker 会拒绝这些占位值并返回 `ready:false`。
 
+`/auth` 的配置错误提示会指出需要重新录入 `GITHUB_CLIENT_ID` 还是 `GITHUB_CLIENT_SECRET`，不会显示值。如果交互录入后仍提示 Client ID 无效，可先从 GitHub 页面复制 Client ID 的字段值，再在本机 PowerShell 中通过标准输入上传：
+
+```powershell
+$cmsClientId = ([string](Get-Clipboard -Raw)).Trim()
+if ($cmsClientId -notmatch '^[A-Za-z0-9._-]{1,200}$' -or $cmsClientId -match '^(undefined|null)$') { throw '剪贴板内容无效，请只复制 Client ID 的字段值。' }
+$cmsClientId | pnpm dlx wrangler@4 secret put GITHUB_CLIENT_ID --config workers/cms-auth/wrangler.jsonc
+```
+
 Node.js 20 或更新版本，无须安装依赖，不连接 GitHub：
 
 ```powershell

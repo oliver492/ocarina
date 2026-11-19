@@ -105,9 +105,30 @@ test("literal undefined and null credentials fail closed regardless of letter ca
       assert.equal(auth.status, 503, description);
       assert.equal(auth.headers.get("Location"), null, description);
       assertCleared(auth);
-      const output = `${await auth.text()} ${JSON.stringify([...auth.headers])}`;
-      assert.doesNotMatch(output, /undefined|null|test-client|oliver492|workers\.dev|GITHUB_CLIENT_(?:ID|SECRET)/i, description);
+      const body = await auth.text();
+      assert.match(body, new RegExp(field), description);
+      const otherField = field === "GITHUB_CLIENT_ID" ? "GITHUB_CLIENT_SECRET" : "GITHUB_CLIENT_ID";
+      assert.doesNotMatch(body, new RegExp(otherField), description);
+      const output = `${body} ${JSON.stringify([...auth.headers])}`;
+      assert.doesNotMatch(output, /undefined|null|test-client|oliver492|workers\.dev/i, description);
     }
+  }
+});
+
+test("missing origins keep the generic auth message and opaque health response", async () => {
+  for (const settings of [
+    { ...env, CMS_ORIGIN: undefined },
+    { ...env, OAUTH_ORIGIN: undefined },
+    { ...env, CMS_ORIGIN: "not-an-origin" },
+  ]) {
+    const health = await handleRequest(request("/health"), settings);
+    assert.equal(health.status, 200);
+    assert.equal(await health.text(), '{"ready":false}');
+    const auth = await handleRequest(request("/auth?provider=github"), settings);
+    assert.equal(auth.status, 503);
+    assert.equal(auth.headers.get("Location"), null);
+    assertCleared(auth);
+    assert.equal(await auth.text(), "登录代理尚未配置完成。");
   }
 });
 
