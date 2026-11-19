@@ -63,17 +63,40 @@
 
    `PUBLIC_CMS_AUTH_URL` 是公开的代理地址，不能填入 Client Secret 或 GitHub token。本地 `pnpm dev` 的写作模式使用 `pnpm cms:local`，不需要 OAuth 登录。
 
-## 本地校验
+## 排查登录配置
 
 如果登录跳转到 GitHub 404，检查跳转地址中的 `client_id` 是否为 `undefined` 或 `null`。这表示录入了占位文字，需要从 OAuth App 页面复制真实 Client ID，重新运行 `wrangler secret put GITHUB_CLIENT_ID`。更新后关闭旧的 404 窗口，从博客后台重新点击 GitHub 登录；刷新旧地址不会更新参数。Worker 会拒绝这些占位值并返回 `ready:false`。
 
-`/auth` 的配置错误提示会指出需要重新录入 `GITHUB_CLIENT_ID` 还是 `GITHUB_CLIENT_SECRET`，不会显示值。如果交互录入后仍提示 Client ID 无效，可先从 GitHub 页面复制 Client ID 的字段值，再在本机 PowerShell 中通过标准输入上传：
+`/auth` 的配置错误提示会指出需要重新录入 `GITHUB_CLIENT_ID` 还是 `GITHUB_CLIENT_SECRET`，不会显示值。如果交互录入后仍提示 Client ID 无效，在项目目录的 **PowerShell** 终端运行整个代码块：
 
 ```powershell
-$cmsClientId = ([string](Get-Clipboard -Raw)).Trim()
-if ($cmsClientId -notmatch '^[A-Za-z0-9._-]{1,200}$' -or $cmsClientId -match '^(undefined|null)$') { throw '剪贴板内容无效，请只复制 Client ID 的字段值。' }
-$cmsClientId | pnpm dlx wrangler@4 secret put GITHUB_CLIENT_ID --config workers/cms-auth/wrangler.jsonc
+& {
+  $cmsClientId = (Read-Host '请粘贴 GitHub Client ID').Trim()
+  if ($cmsClientId -notmatch '^[A-Za-z0-9._-]{1,200}$' -or $cmsClientId -match '^(undefined|null)$') { throw 'Client ID 无效，请复制该字段下方的值。' }
+  $cmsClientId | pnpm dlx wrangler@4 secret put GITHUB_CLIENT_ID --config workers/cms-auth/wrangler.jsonc
+}
 ```
+
+等终端提示输入后，再从 GitHub OAuth App 页面复制 Client ID 的字段值，粘贴到终端并回车。值只通过标准输入上传，不写入源码或命令参数。看到成功提示后，从后台重新开始登录。此代码块使用 PowerShell 语法，不能直接在 CMD 中执行。
+
+若提示需要重新录入 `GITHUB_CLIENT_SECRET`，从同一个 OAuth App 页面准备完整 Client Secret；原值已隐藏时可生成一枚新的。PowerShell 中可使用隐藏输入后直接上传：
+
+```powershell
+& {
+  $cmsSecret = Read-Host '请粘贴 GitHub Client Secret' -AsSecureString
+  $cmsSecretValue = [System.Net.NetworkCredential]::new('', $cmsSecret).Password.Trim()
+  try {
+    if (!$cmsSecretValue -or $cmsSecretValue -match '^(undefined|null)$' -or $cmsSecretValue -match '\s') { throw 'Client Secret 无效，请复制完整字段值。' }
+    $cmsSecretValue | pnpm dlx wrangler@4 secret put GITHUB_CLIENT_SECRET --config workers/cms-auth/wrangler.jsonc
+    if ($LASTEXITCODE -ne 0) { throw '上传未完成，请查看 Wrangler 的错误提示。' }
+  } finally {
+    $cmsSecretValue = $null
+    $cmsSecret.Dispose()
+  }
+}
+```
+
+## 本地校验
 
 Node.js 20 或更新版本，无须安装依赖，不连接 GitHub：
 
