@@ -226,9 +226,10 @@ test("callback supplies PKCE and secret only to GitHub and verifies the allowed 
     redirect_uri: `${oauthOrigin}/callback`,
     code_verifier: session.verifier,
   });
-  assert.equal(github.calls[0].options.redirect, "error");
+  assert.equal(github.calls[0].options.redirect, "manual");
+  assert.equal(github.calls[0].options.headers["User-Agent"], "ocarina-cms-auth");
   assert.equal(github.calls[1].options.headers.Authorization, "Bearer test-access-token");
-  assert.equal(github.calls[1].options.redirect, "error");
+  assert.equal(github.calls[1].options.redirect, "manual");
   const html = await result.text();
   assert.doesNotMatch(html, /test-client-secret|valid-code|code_verifier/);
   const popup = runPopup(html);
@@ -259,6 +260,100 @@ test("callback rejects a different GitHub account without releasing its token", 
     const html = await result.text();
     assert.doesNotMatch(html, /must-never-leak|test-client-secret|authorization:github:success/);
     assert.match(html, /authorization:github:error:/);
+  }
+});
+
+test("known OAuth errors use static explanations without reflecting upstream data", async () => {
+  const { cookie, session } = await startLogin();
+  for (const [error, message] of [
+    ["incorrect_client_credentials", "GitHub 拒绝了应用凭据：请确认 Client ID 和 Client Secret 来自同一个 OAuth App。"],
+    ["redirect_uri_mismatch", "GitHub 回调地址不匹配：请检查 OAuth App 的 Authorization callback URL。"],
+    ["bad_verification_code", "GitHub 授权码已失效，请关闭弹窗，从后台重新登录。"],
+    ["unverified_user_email", "GitHub 账号的主邮箱尚未验证，请先完成邮箱验证。"],
+  ]) {
+    const github = githubFetch({ tokenData: {
+      error,
+      error_description: "must-never-leak upstream-description",
+      access_token: "must-never-leak-token",
+      client_secret: env.GITHUB_CLIENT_SECRET,
+      client_id: env.GITHUB_CLIENT_ID,
+    } });
+    const result = await handleRequest(callback(session, cookie), env, github.fetch);
+    assert.equal(result.status, 502);
+    assertCleared(result);
+    assert.equal(github.calls.length, 1);
+    const html = await result.text();
+    assert.ok(html.includes(message), error);
+    assert.doesNotMatch(html, /must-never-leak|upstream-description|test-client|error_description|access_token|authorization:github:success/);
+    assert.ok(!html.includes(error));
+  }
+});
+
+test("upstream HTTP errors identify the failed stage without exposing the response body", async () => {
+  const { cookie, session } = await startLogin();
+  for (const [github, message] of [
+    [githubFetch({ tokenStatus: 403, tokenData: { error_description: "must-never-leak" } }), "GitHub 令牌交换请求失败（HTTP 403）"],
+    [githubFetch({ token: "must-never-leak-token", userStatus: 401, userData: { message: "must-never-leak" } }), "读取 GitHub 账号失败（HTTP 401）"],
+  ]) {
+    const result = await handleRequest(callback(session, cookie), env, github.fetch);
+    assert.equal(result.status, 502);
+    assertCleared(result);
+    const html = await result.text();
+    assert.ok(html.includes(message));
+    assert.doesNotMatch(html, /must-never-leak|test-client-secret|error_description|authorization:github:success/);
+  }
+});
+
+test("token and user redirects are rejected without following Location or forwarding credentials", async () => {
+  const { cookie, session } = await startLogin();
+  for (const stage of ["token", "user"]) {
+    for (const status of [302, 307]) {
+      const calls = [];
+      const result = await handleRequest(callback(session, cookie), env, async (url, options) => {
+        if (options.redirect !== "manual") throw new TypeError("Unsupported Worker redirect mode");
+        calls.push({ url, options });
+        assert.ok(["https://github.com/login/oauth/access_token", "https://api.github.com/user"].includes(url));
+        if (stage === "user" && url === "https://github.com/login/oauth/access_token") {
+          return Response.json({ access_token: "must-never-leak-token" });
+        }
+        return new Response(null, { status, headers: { Location: "https://untrusted.example/steal" } });
+      });
+      assert.equal(result.status, 502);
+      assertCleared(result);
+      assert.deepEqual(calls.map((call) => call.url), stage === "token"
+        ? ["https://github.com/login/oauth/access_token"]
+        : ["https://github.com/login/oauth/access_token", "https://api.github.com/user"]);
+      assert.equal(calls[0].options.redirect, "manual");
+      assert.equal(JSON.parse(calls[0].options.body).client_secret, env.GITHUB_CLIENT_SECRET);
+      if (stage === "user") {
+        assert.equal(calls[1].options.redirect, "manual");
+        assert.equal(calls[1].options.headers.Authorization, "Bearer must-never-leak-token");
+      }
+      const html = await result.text();
+      const message = stage === "token" ? "GitHub 令牌交换请求失败" : "读取 GitHub 账号失败";
+      assert.ok(html.includes(`${message}（HTTP ${status}）`));
+      assert.doesNotMatch(html, /untrusted\.example|must-never-leak|test-client-secret|authorization:github:success/);
+    }
+  }
+});
+
+test("network exceptions identify token exchange or account lookup without echoing exception text", async () => {
+  const { cookie, session } = await startLogin();
+  for (const [stage, message] of [
+    ["token", "GitHub 令牌交换未完成，请稍后重试。"],
+    ["user", "GitHub 账号读取未完成，请稍后重试。"],
+  ]) {
+    const result = await handleRequest(callback(session, cookie), env, async (url) => {
+      if (stage === "user" && url === "https://github.com/login/oauth/access_token") {
+        return Response.json({ access_token: "must-never-leak-token" });
+      }
+      throw new Error(`must-never-leak-exception ${env.GITHUB_CLIENT_SECRET}`);
+    });
+    assert.equal(result.status, 502);
+    assertCleared(result);
+    const html = await result.text();
+    assert.ok(html.includes(message), stage);
+    assert.doesNotMatch(html, /must-never-leak|test-client-secret|authorization:github:success/);
   }
 });
 

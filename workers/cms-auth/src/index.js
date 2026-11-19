@@ -157,12 +157,14 @@ async function handleCallback(request, url, config, fetchImpl) {
   if (!code || code.length > 1024 || url.searchParams.getAll("code").length !== 1) {
     return popupError(config, "缺少有效的 GitHub 授权码，请重新登录。", 400);
   }
+  let phase = "token";
   try {
     const tokenResponse = await fetchImpl("https://github.com/login/oauth/access_token", {
       method: "POST",
-      redirect: "error",
+      // Workers supports manual redirects; non-2xx responses are rejected below.
+      redirect: "manual",
       signal: AbortSignal.timeout(10000),
-      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      headers: { Accept: "application/json", "Content-Type": "application/json", "User-Agent": "ocarina-cms-auth" },
       body: JSON.stringify({
         client_id: config.clientId,
         client_secret: config.clientSecret,
@@ -171,14 +173,23 @@ async function handleCallback(request, url, config, fetchImpl) {
         code_verifier: session.verifier,
       }),
     });
-    if (!tokenResponse.ok) throw new Error("Token exchange failed");
+    if (!tokenResponse.ok) return popupError(config, `GitHub 令牌交换请求失败（HTTP ${tokenResponse.status}），请稍后重试。`, 502);
     const result = await tokenResponse.json();
-    const token = result.access_token;
-    if (result.error || typeof token !== "string" || !token || token.length > 4096 || /[\x00-\x20\x7f]/.test(token)) {
-      throw new Error("Invalid token");
+    if (result.error) {
+      let message = "GitHub 未返回可用的登录令牌，请重新登录。";
+      if (result.error === "incorrect_client_credentials") message = "GitHub 拒绝了应用凭据：请确认 Client ID 和 Client Secret 来自同一个 OAuth App。";
+      if (result.error === "redirect_uri_mismatch") message = "GitHub 回调地址不匹配：请检查 OAuth App 的 Authorization callback URL。";
+      if (result.error === "bad_verification_code") message = "GitHub 授权码已失效，请关闭弹窗，从后台重新登录。";
+      if (result.error === "unverified_user_email") message = "GitHub 账号的主邮箱尚未验证，请先完成邮箱验证。";
+      return popupError(config, message, 502);
     }
+    const token = result.access_token;
+    if (typeof token !== "string" || !token || token.length > 4096 || /[\x00-\x20\x7f]/.test(token)) {
+      return popupError(config, "GitHub 未返回可用的登录令牌，请重新登录。", 502);
+    }
+    phase = "identity";
     const userResponse = await fetchImpl("https://api.github.com/user", {
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(10000),
       headers: {
         Accept: "application/vnd.github+json",
@@ -187,12 +198,12 @@ async function handleCallback(request, url, config, fetchImpl) {
         "X-GitHub-Api-Version": "2022-11-28",
       },
     });
-    if (!userResponse.ok) throw new Error("Identity check failed");
+    if (!userResponse.ok) return popupError(config, `读取 GitHub 账号失败（HTTP ${userResponse.status}），请重新登录。`, 502);
     const user = await userResponse.json();
     if (user.login !== config.allowedUser) return popupError(config, "此 GitHub 账户没有博客管理权限。", 403);
     return popupResponse(config, "success", { token, provider: "github" });
   } catch {
-    return popupError(config, "GitHub 登录验证失败，请稍后重试。", 502);
+    return popupError(config, phase === "token" ? "GitHub 令牌交换未完成，请稍后重试。" : "GitHub 账号读取未完成，请稍后重试。", 502);
   }
 }
 
