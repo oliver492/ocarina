@@ -59,7 +59,7 @@ export const navBarConfig: NavBarConfig = {
 };
 
 export const profileConfig: ProfileConfig = {
-	avatar: "/images/avatar.svg",
+	avatar: "/images/avatar.jpg",
 	name: "oliver",
 	bio: "记录所学，分享所想。",
 	links: githubUrl ? [{
