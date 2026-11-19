@@ -13,7 +13,6 @@
     "new-post": "node scripts/new-post.js",
     "cms:local": "node scripts/start-cms.mjs",
     "test:cms": "node --test tests/*.test.mjs workers/cms-auth/test/*.test.mjs",
-    "test:cms": "node --test tests/*.test.mjs workers/cms-auth/test/*.test.mjs",
     "format": "biome format --write ./src",
     "lint": "biome check --write ./src",
     "preinstall": "npx only-allow pnpm"
